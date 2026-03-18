@@ -2,89 +2,115 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="robots" content="noindex, nofollow"> <title>Redirecting...</title>
-    
+    <meta name="robots" content="noindex, nofollow">
+    <title>Redirecting...</title>
     <script>
         // ==========================================
-        // クライアント別設定エリア（ここを書き換える）
+        // クライアント別設定
         // ==========================================
         var CONFIG = {
-            // Mico Voice 接続トークン
-            token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjYW1wYWlnblVpZCI6ImM1MTE2ODNjLTQxNzUtNDI0ZC1hZmM3LTRkMjc3MWIxOTE4ZSIsImlhdCI6MTc3Mzg0OTI2Mn0.Y9auzpWf2jsmKGCivJv-SPgeVOCRVR5L65JmIbLw5Pg",
+            // デフォルトのトークン（1つのみの場合や、branch指定がない場合に使用）
+            defaultToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjYW1wYWlnblVpZCI6ImM1MTE2ODNjLTQxNzUtNDI0ZC1hZmM3LTRkMjc3MWIxOTE4ZSIsImlhdCI6MTc3Mzg0OTI2Mn0.Y9auzpWf2jsmKGCivJv-SPgeVOCRVR5L65JmIbLw5Pg", 
+
+            // 拠点ごとの個別トークン（必要に応じて追加）
+            branchSettings: {
+                'branch1': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.branch1_token_example",
+                'Branch2': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.branch2_token_example"
+            },
             
-            // Mico Voice 実行ディレイ（秒数）
+            // Mico Voice 実行ディレイ（秒）
             delay: 15,
             
-            // リダイレクト先URL（パラメータを除いたベースURL）
-            redirectTo: "https://https://mico-inc.com/",
+            // リダイレクト先URL
+            redirectTo: "https://mico-inc.com/",
             
             // リダイレクトまでの待機時間（ミリ秒）
-            waitBeforeRedirect: 2000 
+            waitBeforeRedirect: 2000
         };
         // ==========================================
 
-        // 1. Mico Voice ライブラリの読み込み
-        !function(){
-            var e=document.createElement("script");
-            e.src="https://api.micovoice.com/api/v1/quick_calls/tag",e.async=!0,e.type="text/javascript",document.head.appendChild(e),
-            window.__MV_DATALAYER__=window.__MV_DATALAYER__||[],
-            window.mvtag=function(e,t){
-                __MV_DATALAYER__.push({
-                    eventType:e,
-                    eventData:t,
-                    token: CONFIG.token // CONFIGから取得
-                })
-            }
-        }();
-    </script>
-
-    <script>
         (function() {
+            window.__MV_DATALAYER__ = window.__MV_DATALAYER__ || [];
+
             var urlParams = new URLSearchParams(window.location.search);
-            var encoded = urlParams.get('utm_customid');
-            var queryString = window.location.search;
+            var branch = urlParams.get('branch');
+            var encodedPhone = urlParams.get('utm_customid');
+            var encodedName = urlParams.get('name');
+
+            function decode(str) {
+                try {
+                    return str ? decodeURIComponent(escape(atob(str))) : null;
+                } catch (e) { return null; }
+            }
+
+            var phone = decode(encodedPhone);
+            var name = decode(encodedName);
+
+            var token = (branch && CONFIG.branchSettings[branch]) ? CONFIG.branchSettings[branch] : CONFIG.defaultToken;
 
             function executeRedirect() {
                 setTimeout(function() {
-                    window.location.href = CONFIG.redirectTo + queryString;
-                }, CONFIG.waitBeforeRedirect); 
+                    window.location.href = CONFIG.redirectTo + window.location.search;
+                }, CONFIG.waitBeforeRedirect);
             }
 
-            if (encoded) {
-                try {
-                    var decoded = atob(encoded);
-                    var retryCount = 0;
-                    var fireTag = function() {
-                        if (typeof mvtag === "function") {
-                            mvtag("quick_call", {
-                                "phone_number": decoded,
-                                "delay": CONFIG.delay // CONFIGから取得
-                            });
-                            executeRedirect();
-                        } else if (retryCount < 20) { 
-                            retryCount++;
-                            setTimeout(fireTag, 200);
-                        } else {
-                            executeRedirect();
+            if (token) {
+                var s = document.createElement("script");
+                s.src = "https://api.micovoice.com/api/v1/quick_calls/tag";
+                s.async = true;
+                document.head.appendChild(s);
+
+                window.mvtag = function(e, t) {
+                    window.__MV_DATALAYER__.push({ eventType: e, eventData: t, token: token });
+                };
+
+                var fire = function() {
+                    if (phone || name) {
+                        var eventData = {
+                            "is_sandbox": false,
+                            "delay": CONFIG.delay,
+                            "phone_number": phone
+                        };
+                        if (name) {
+                            eventData["full_name"] = name;
                         }
-                    };
-                    fireTag();
-                } catch (e) {
-                    executeRedirect(); 
-                }
+                        window.mvtag("quick_call", eventData);
+                    }
+                    executeRedirect();
+                };
+
+                s.onload = fire;
+                
+                setTimeout(function() {
+                    if (window.__MV_DATALAYER__.length === 0) {
+                        fire();
+                    }
+                }, 1500);
+
             } else {
                 executeRedirect();
             }
         })();
     </script>
 </head>
-<body style="text-align: center; margin-top: 50px; font-family: sans-serif; color: #333;">
-    <p>ページを移動しています...</p>
-    <p style="font-size: 0.8em; color: #999;">
-        自動で切り替わらない場合は<a id="manual-link" href="#" style="color: #007bff;">こちら</a>をクリックしてください。
-    </p>
+<body style="text-align: center; margin-top: 80px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333;">
+    
+    <div style="display: inline-block; text-align: left;">
+        <p style="font-size: 1rem; margin-bottom: 10px;">ページを移動しています...</p>
+        
+        <p style="font-size: 0.8em; color: #999;">
+            自動で切り替わらない場合は<a id="manual-link" href="#" style="color: #007bff; text-decoration: underline;">こちら</a>をクリックしてください。
+        </p>
+    </div>
+
     <script>
-        document.getElementById('manual-link').href = CONFIG.redirectTo + window.location.search;
+        window.addEventListener('DOMContentLoaded', function() {
+            var finalUrl = CONFIG.redirectTo + window.location.search;
+            var linkElem = document.getElementById('manual-link');
+            if (linkElem) {
+                linkElem.href = finalUrl;
+            }
+        });
     </script>
 </body>
 </html>
