@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow"> <title>Redirecting...</title>
+    
+    <script>
+        // ==========================================
+        // クライアント別設定エリア（ここを書き換える）
+        // ==========================================
+        var CONFIG = {
+            // Mico Voice 接続トークン
+            token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjYW1wYWlnblVpZCI6ImM1MTE2ODNjLTQxNzUtNDI0ZC1hZmM3LTRkMjc3MWIxOTE4ZSIsImlhdCI6MTc3Mzg0OTI2Mn0.Y9auzpWf2jsmKGCivJv-SPgeVOCRVR5L65JmIbLw5Pg",
+            
+            // Mico Voice 実行ディレイ（秒数）
+            delay: 15,
+            
+            // リダイレクト先URL（パラメータを除いたベースURL）
+            redirectTo: "https://https://mico-inc.com/",
+            
+            // リダイレクトまでの待機時間（ミリ秒）
+            waitBeforeRedirect: 2000 
+        };
+        // ==========================================
+
+        // 1. Mico Voice ライブラリの読み込み
+        !function(){
+            var e=document.createElement("script");
+            e.src="https://api.micovoice.com/api/v1/quick_calls/tag",e.async=!0,e.type="text/javascript",document.head.appendChild(e),
+            window.__MV_DATALAYER__=window.__MV_DATALAYER__||[],
+            window.mvtag=function(e,t){
+                __MV_DATALAYER__.push({
+                    eventType:e,
+                    eventData:t,
+                    token: CONFIG.token // CONFIGから取得
+                })
+            }
+        }();
+    </script>
+
+    <script>
+        (function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var encoded = urlParams.get('utm_customid');
+            var queryString = window.location.search;
+
+            function executeRedirect() {
+                setTimeout(function() {
+                    window.location.href = CONFIG.redirectTo + queryString;
+                }, CONFIG.waitBeforeRedirect); 
+            }
+
+            if (encoded) {
+                try {
+                    var decoded = atob(encoded);
+                    var retryCount = 0;
+                    var fireTag = function() {
+                        if (typeof mvtag === "function") {
+                            mvtag("quick_call", {
+                                "phone_number": decoded,
+                                "delay": CONFIG.delay // CONFIGから取得
+                            });
+                            executeRedirect();
+                        } else if (retryCount < 20) { 
+                            retryCount++;
+                            setTimeout(fireTag, 200);
+                        } else {
+                            executeRedirect();
+                        }
+                    };
+                    fireTag();
+                } catch (e) {
+                    executeRedirect(); 
+                }
+            } else {
+                executeRedirect();
+            }
+        })();
+    </script>
+</head>
+<body style="text-align: center; margin-top: 50px; font-family: sans-serif; color: #333;">
+    <p>ページを移動しています...</p>
+    <p style="font-size: 0.8em; color: #999;">
+        自動で切り替わらない場合は<a id="manual-link" href="#" style="color: #007bff;">こちら</a>をクリックしてください。
+    </p>
+    <script>
+        document.getElementById('manual-link').href = CONFIG.redirectTo + window.location.search;
+    </script>
+</body>
+</html>
