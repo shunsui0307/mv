@@ -2,8 +2,28 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Redirecting...</title>
+    <meta name="robots" content="noindex, nofollow"> <title>Redirecting...</title>
+    
     <script>
+        // ==========================================
+        // クライアント別設定エリア（ここを書き換える）
+        // ==========================================
+        var CONFIG = {
+            // Mico Voice 接続トークン
+            token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjYW1wYWlnblVpZCI6Ijk5ZjgwODQ5LTcyYTctNDYzNy05YTRhLTg5YjBhY2MyNDRjOSIsImlhdCI6MTc3MTQwNTY1OX0.gdfxIwd6DVMrR_lH17ud6fXTvzZKvmOE1VcYlG9679k",
+            
+            // Mico Voice 実行ディレイ（秒数）
+            delay: 15,
+            
+            // リダイレクト先URL（パラメータを除いたベースURL）
+            redirectTo: "https://mynavi-job20s.jp/mypage/register",
+            
+            // リダイレクトまでの待機時間（ミリ秒）
+            waitBeforeRedirect: 2000 
+        };
+        // ==========================================
+
+        // 1. Mico Voice ライブラリの読み込み
         !function(){
             var e=document.createElement("script");
             e.src="https://api.micovoice.com/api/v1/quick_calls/tag",e.async=!0,e.type="text/javascript",document.head.appendChild(e),
@@ -12,7 +32,7 @@
                 __MV_DATALAYER__.push({
                     eventType:e,
                     eventData:t,
-                    token:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjYW1wYWlnblVpZCI6Ijk5ZjgwODQ5LTcyYTctNDYzNy05YTRhLTg5YjBhY2MyNDRjOSIsImlhdCI6MTc3MTQwNTY1OX0.gdfxIwd6DVMrR_lH17ud6fXTvzZKvmOE1VcYlG9679k"
+                    token: CONFIG.token // CONFIGから取得
                 })
             }
         }();
@@ -20,58 +40,51 @@
 
     <script>
         (function() {
-            // 設定：リダイレクト先のベースURL（SPAサイトのトップなど）
-            var redirectTo = "https://mynavi-job20s.jp/mypage/register"; 
-
             var urlParams = new URLSearchParams(window.location.search);
             var encoded = urlParams.get('utm_customid');
-            
-            // 全てのパラメータを文字列として取得（例: ?utm_source=...&utm_customid=...）
             var queryString = window.location.search;
+
+            function executeRedirect() {
+                setTimeout(function() {
+                    window.location.href = CONFIG.redirectTo + queryString;
+                }, CONFIG.waitBeforeRedirect); 
+            }
 
             if (encoded) {
                 try {
                     var decoded = atob(encoded);
-                    
-                    // mvtagが存在するか確認して実行
+                    var retryCount = 0;
                     var fireTag = function() {
                         if (typeof mvtag === "function") {
                             mvtag("quick_call", {
                                 "phone_number": decoded,
-                                "delay": 15
+                                "delay": CONFIG.delay // CONFIGから取得
                             });
-                            console.log("Tag fired for: " + decoded);
                             executeRedirect();
+                        } else if (retryCount < 20) { 
+                            retryCount++;
+                            setTimeout(fireTag, 200);
                         } else {
-                            // まだ読み込まれていない場合は0.5秒後に再試行
-                            setTimeout(fireTag, 500);
+                            executeRedirect();
                         }
                     };
                     fireTag();
-
                 } catch (e) {
-                    console.error("Base64 decode error:", e);
-                    executeRedirect(); // エラー時もリダイレクトは実行
+                    executeRedirect(); 
                 }
             } else {
-                // パラメータがない場合も即リダイレクト
                 executeRedirect();
-            }
-
-            function executeRedirect() {
-                // タグの通信時間を考慮して少しだけバッファを持たせる（1秒）
-                setTimeout(function() {
-                    window.location.href = redirectTo + queryString;
-                }, 1000);
             }
         })();
     </script>
 </head>
-<body>
-    <p>ページを移動しています。切り替わらない場合は<a id="manual-link" href="#">こちら</a>をクリックしてください。</p>
+<body style="text-align: center; margin-top: 50px; font-family: sans-serif; color: #333;">
+    <p>ページを移動しています...</p>
+    <p style="font-size: 0.8em; color: #999;">
+        自動で切り替わらない場合は<a id="manual-link" href="#" style="color: #007bff;">こちら</a>をクリックしてください。
+    </p>
     <script>
-        // 万が一のための手動リンク生成
-        document.getElementById('manual-link').href = "https://example.com/target-page" + window.location.search;
+        document.getElementById('manual-link').href = CONFIG.redirectTo + window.location.search;
     </script>
 </body>
 </html>
